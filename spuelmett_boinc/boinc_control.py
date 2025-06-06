@@ -30,24 +30,27 @@ class BoincControl:
     async def start_boinc(self):
         await self.connect()
         self.current_soft_stop_state = False
+        await self.allow_more_project_work()
         await self.resume_all_task()
-        await self.rpc_client.set_run_mode(Mode.AUTO, 0)
 
     async def stop_boinc(self):
         await self.connect()
-        await self.rpc_client.set_run_mode(Mode.NEVER, 0)
+        await self.no_more_project_work()
+        await self.abort_all_non_started_task()
+        await self.suspend_all_task()
 
-    def soft_stop_boinc(self):
+    async def soft_stop_boinc(self):
+        await self.connect()
+        await self.no_more_project_work()
+        await self.abort_all_non_started_task()
         self.current_soft_stop_state = True
 
     async def update(self):
-        await self.connect()
-
         # Do nothing if it should not stop
         if self.current_soft_stop_state is False:
             return
 
-        one_task_running = False  # Default
+        await self.connect()
 
         results = await self.rpc_client.get_results()
         for result in results:
@@ -65,12 +68,6 @@ class BoincControl:
                 ):
                     # Suspend task
                     await self.rpc_client.suspend_result(project_url, name)
-                else:
-                    one_task_running = True
-
-        # if all task are suspended set run mode to suspend
-        if one_task_running is False:
-            await self.rpc_client.set_run_mode(Mode.NEVER, 0)
 
     async def resume_all_task(self):
         results = await self.rpc_client.get_results()
@@ -83,3 +80,52 @@ class BoincControl:
             project_url = result["project_url"]
             name = result["name"]
             await self.rpc_client.resume_result(project_url, name)
+
+    async def abort_all_non_started_task(self):
+        results = await self.rpc_client.get_results()
+
+        # if no task are there, results is a string
+        if results == "\n":
+            return
+
+        for result in results:
+            if "active_task" not in result or result["active_task"]["scheduler_state"] is "uninitialized":
+                project_url = result["project_url"]
+                name = result["name"]
+                await self.rpc_client.abort_result(project_url, name)
+
+    async def suspend_all_task(self):
+        results = await self.rpc_client.get_results()
+
+        # if no task are there, results is a string
+        if results == "\n":
+            return
+
+        for result in results:
+            project_url = result["project_url"]
+            name = result["name"]
+            await self.rpc_client.suspend_result(project_url, name)
+
+    async def no_more_project_work(self):
+        await self.connect()
+        projects = await self.rpc_client.get_project_status()
+
+        # if no projects are there, results is a string
+        if projects == "\n":
+            return
+
+        for project in projects:
+            project_url = project.master_url
+            await self.rpc_client.project_nomorework(project_url)
+
+    async def allow_more_project_work(self):
+        await self.connect()
+        projects = await self.rpc_client.get_project_status()
+
+        # if no projects are there, results is a string
+        if projects == "\n":
+            return
+
+        for project in projects:
+            project_url = project.master_url
+            await self.rpc_client.project_allowmorework(project_url)

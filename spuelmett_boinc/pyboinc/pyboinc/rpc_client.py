@@ -32,9 +32,12 @@ async def init_rpc_client(host: str, password=None, port=GUI_RPC_DEFAULT_PORT):
     return c
 
 
-def _append_project_element(root: ET.Element, project_url: Union[Project, str], name):
+def _append_project(root: ET.Element, project_url: Union[Project, str]):
     url = ET.SubElement(root, Tag.PROJECT_URL)
     url.text = str(project_url)
+
+def _append_project_element(root: ET.Element, project_url: Union[Project, str], name):
+    _append_project(root, project_url)
     name_e = ET.SubElement(root, Tag.NAME)
     name_e.text = name
 
@@ -228,4 +231,20 @@ class RPCClient:
         ET.SubElement(req, mode.value)
         a = ET.SubElement(req, str(duration))
         a.text = str(duration)
+        return await self._request_auth(req)
+
+    async def project_allowmorework(self, project_url):
+        """
+        set that more work should be allowed to be requested for the project
+        """
+        req = ET.Element(Tag.PROJECT_ALLOWMOREWORK)
+        _append_project(req, project_url)
+        return await self._request_auth(req)
+
+    async def project_nomorework(self, project_url):
+        """
+        set that no more work should be requested for the project
+        """
+        req = ET.Element(Tag.PROJECT_NOMOREWORK)
+        _append_project(req, project_url)
         return await self._request_auth(req)

@@ -39,10 +39,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await boinc.stop_boinc()
 
     async def soft_stop_boinc(call: ServiceCall) -> None:
-        boinc.soft_stop_boinc()
+        await boinc.soft_stop_boinc()
 
     async def soft_stop_check(call: ServiceCall) -> None:
         await boinc.update()
+
+    async def no_more_project_work(call: ServiceCall) -> None:
+        await boinc.no_more_project_work()
+
+    async def allow_more_project_work(call: ServiceCall) -> None:
+        await boinc.allow_more_project_work()
 
     service_name_suffix = str(name).replace("-", "_")
     hass.services.async_register(
@@ -56,6 +62,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     hass.services.async_register(
         DOMAIN, "soft_stop_check_" + service_name_suffix, soft_stop_check
+    )
+    hass.services.async_register(
+        DOMAIN, "no_more_project_work_" + service_name_suffix, no_more_project_work
+    )
+    hass.services.async_register(
+        DOMAIN, "allow_more_project_work_" + service_name_suffix, allow_more_project_work
     )
 
     # Add Event listener to trigger soft stop every minute
